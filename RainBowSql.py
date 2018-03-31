@@ -70,6 +70,10 @@ class RainBowSql(object):
             print("[!] Sorry username existed, please try again!!!")
 
     def login(self):
+        """
+        用户登陆
+        :return: None
+        """
         if os.path.exists(self.config['user_info_path']):
             user_info = joblib.load(self.config['user_info_path'])
         else:
@@ -80,9 +84,11 @@ class RainBowSql(object):
 
         username = input("[>] Please Enter Username: ")
         password = input("[>] Please Enter Password: ")
-        if user_info[username] == self.password_to_md5(password):
+        if user_info.get(username, None) == self.password_to_md5(password):
             print("[+] Welcom {}!".format(username))
-        self.__current_user = username
+            self.__current_user = username
+        else:
+            print("[!] User does not exist or wrong password!")
 
 
 
