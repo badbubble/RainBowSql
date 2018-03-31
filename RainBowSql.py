@@ -48,7 +48,6 @@ class RainBowSql(object):
         return md5.hexdigest()
 
 
-
     def signup(self):
         """
         注册账号
@@ -70,9 +69,25 @@ class RainBowSql(object):
         else:
             print("[!] Sorry username existed, please try again!!!")
 
+    def login(self):
+        if os.path.exists(self.config['user_info_path']):
+            user_info = joblib.load(self.config['user_info_path'])
+        else:
+            print("[!] No user, Please signup!")
+            self.signup()
+            print("[-] Please Login!")
+            user_info = joblib.load(self.config['user_info_path'])
+
+        username = input("[>] Please Enter Username: ")
+        password = input("[>] Please Enter Password: ")
+        if user_info[username] == self.password_to_md5(password):
+            print("[+] Welcom {}!".format(username))
+        self.__current_user = username
+
+
 
 
 
 if __name__ == '__main__':
     db = RainBowSql()
-    db.signup()
+    db.login()
