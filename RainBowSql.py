@@ -17,6 +17,8 @@ class RainBowSql(object):
         self.__version = 'v1.0'
         self._welcome()
         self.config = Config.get_config()
+        self.check_environment()
+
 
     def _welcome(self):
         """
@@ -91,9 +93,14 @@ class RainBowSql(object):
             print("[!] User does not exist or wrong password!")
 
 
+    def check_environment(self):
+        if not os.path.exists('userinfo'):
+            os.makedirs("userinfo")
+        if not os.path.exists('database'):
+            os.makedirs('database')
 
 
 
 if __name__ == '__main__':
     db = RainBowSql()
-    db.login()
+    #db.login()

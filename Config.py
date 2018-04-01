@@ -6,6 +6,7 @@ class Config(object):
     def get_config():
         config = {
             'user_info_path': 'userinfo/userinfo.rb',
+            'db_path':'database/'
 
         }
         return config

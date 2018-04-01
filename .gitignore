@@ -3,3 +3,7 @@ venv/
 
 # Pycharm Files
 .idea/
+__pycache__/
+
+#User Info
+userinfo/
