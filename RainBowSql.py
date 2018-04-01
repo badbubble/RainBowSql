@@ -11,7 +11,6 @@ class RainBowSql(object):
     def __init__(self):
         self.__db_author = 'liuhanjun'
         self.__current_user = ''
-        self.__db_path = ''
         self.__current_db = ''
         self.__current_table = ''
         self.__version = 'v1.0'
@@ -35,9 +34,18 @@ class RainBowSql(object):
 | ) \ \__| )   ( |___) (___| )  \  || )___) )| (___) || () () |/\____) || (_\ \ || (____/\\
 |/   \__/|/     \|\_______/|/    )_)|/ \___/ (_______)(_______)\_______)(____\/_)(_______/
                                                             
-                                                            {}        By:{}
+type help to get help                                                            {}        By:{}
         
         """.format(self.__version, self.__db_author))
+
+    def help(self):
+        print("""
+        command:
+                login: To login RainBowSql.
+                signup: To Create an account.
+                exit | quit: Exit RainBowSql.
+                
+        """)
 
     def password_to_md5(self, password):
         """
@@ -99,8 +107,29 @@ class RainBowSql(object):
         if not os.path.exists('database'):
             os.makedirs('database')
 
+    def get_command(self):
+        command = input("[>]") if not self.__current_db else input("[{} > ]".format(self.__current_db))
+        command = command.lower()
+        return command
+
+    def run(self):
+        while(True):
+            command = self.get_command()
+            if command == 'login':
+                self.login()
+            elif command == 'signup':
+                self.signup()
+            elif command == 'quit' or command == 'exit':
+                print("[:)] Thanks for using RainBowSql. Bye~~")
+                exit(0)
+            elif command == 'help':
+                self.help()
+
+
+
 
 
 if __name__ == '__main__':
     db = RainBowSql()
     #db.login()
+    db.run()
