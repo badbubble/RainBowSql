@@ -12,6 +12,7 @@ class RainBowSql(object):
     def __init__(self):
         self.__author = 'liuhanjun'
         self.__current_user = ''
+        self.__user_right = ''
         self.__current_db = ''
         self.__current_table = ''
         self.__version = 'v1.0'
@@ -73,11 +74,12 @@ class RainBowSql(object):
         :param func: 需要登陆才能运行的函数
         :return:
         """
-
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if args[0].__current_user == "":
+            if args[0].__current_user == "" and args[0].__user_right == "":
                 print("[!] You need login first!")
+            elif args[0].__user_right > 1:
+                print("[!] Your account have no access to do anything!")
             else:
                 return func(*args, **kwargs)
 
@@ -97,7 +99,9 @@ class RainBowSql(object):
         password = input("[>] Please Enter Password: ")
         name_exists = user_info.get(username, None)
         if name_exists is None:
-            user_info[username] = self.password_to_md5(password)
+            user_info[username] = {'password': self.password_to_md5(password),
+                                   'user_right': 2,
+                                   }
             print("[+] Signup Success!")
             joblib.dump(user_info, self.config['user_info_path'])
         else:
@@ -118,11 +122,27 @@ class RainBowSql(object):
 
         username = input("[>] Please Enter Username: ")
         password = input("[>] Please Enter Password: ")
-        if user_info.get(username, None) == self.password_to_md5(password):
+        if user_info.get(username, None) and \
+            user_info[username].get("password", None) == self.password_to_md5(password):
             print("[+] Welcom {}!".format(username))
             self.__current_user = username
+            self.__user_right = user_info[username].get("user_right", "")
         else:
             print("[!] User does not exist or wrong password!")
+
+    def change_user_right(self, user):
+        if self.__user_right != 0:
+            print("[!] You have no access to change user right!")
+            return
+        if user == 'admin':
+            print("[!] Your are admin!")
+        user_info = joblib.load(self.config['user_info_path'])
+        if user_info.get(user, None):
+            user_info[user]['user_right'] = 1
+            joblib.dump(user_info, self.config['user_info_path'])
+            print("[+] Change Success!")
+        else:
+            print("[!] User does not exist!")
 
     def logout(self):
         """
@@ -130,18 +150,24 @@ class RainBowSql(object):
         :return:None
         """
         self.__current_user = ''
+        self.__user_right = ''
         print("[+] Logout!")
 
-    @staticmethod
-    def check_environment():
+    def check_environment(self):
         """
         检查所需目录是否存在,若不存在就创建缺失目录
         :return: None
         """
         if not os.path.exists('userinfo'):
-            os.makedirs("userinfo")
+            os.mkdir('userinfo')
+            admin_user = {
+                'admin': {"password": self.password_to_md5("admin888"), 'user_right': 0},
+            }
+            joblib.dump(admin_user, self.config['user_info_path'])
         if not os.path.exists('database'):
             os.makedirs('database')
+
+
 
     def create_database(self, dbname):
         """
@@ -231,11 +257,18 @@ class RainBowSql(object):
                     print("[!] Wrong query!")
 
         if operate == 'show':
-            if sql_words[1] == 'database':
+            if sql_words[1] == 'databases':
                 try:
                     self.show_database()
                 except:
                     print("[!] Wrong query!")
+
+        if operate == 'change':
+            try:
+                self.change_user_right(sql_words[1])
+            except:
+                print("[!] Wrong query!")
+
 
     def run(self):
         """
@@ -255,6 +288,7 @@ class RainBowSql(object):
                 exit(0)
             elif command == 'help':
                 self.help()
+
             else:
                 self.query(command)
 
