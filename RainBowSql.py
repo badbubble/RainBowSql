@@ -74,6 +74,7 @@ class RainBowSql(object):
         :param func: 需要登陆才能运行的函数
         :return:
         """
+
         @wraps(func)
         def wrapper(*args, **kwargs):
             if args[0].__current_user == "" and args[0].__user_right == "":
@@ -123,7 +124,7 @@ class RainBowSql(object):
         username = input("[>] Please Enter Username: ")
         password = input("[>] Please Enter Password: ")
         if user_info.get(username, None) and \
-            user_info[username].get("password", None) == self.password_to_md5(password):
+                user_info[username].get("password", None) == self.password_to_md5(password):
             print("[+] Welcom {}!".format(username))
             self.__current_user = username
             self.__user_right = user_info[username].get("user_right", "")
@@ -167,8 +168,6 @@ class RainBowSql(object):
         if not os.path.exists('database'):
             os.makedirs('database')
 
-
-
     def create_database(self, dbname):
         """
         创建数据库
@@ -191,7 +190,7 @@ class RainBowSql(object):
         if dbname not in os.listdir(self.config['db_path']):
             print("[!] Can not find DataBase!")
         else:
-            print("[+] Using {}".format(dbname))
+            print("[+] Using database {}".format(dbname))
             self.__current_db = dbname
 
     def drop_database(self, dbname):
@@ -268,7 +267,6 @@ class RainBowSql(object):
                 self.change_user_right(sql_words[1])
             except:
                 print("[!] Wrong query!")
-
 
     def run(self):
         """
