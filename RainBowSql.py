@@ -7,6 +7,7 @@ import joblib
 import hashlib
 from functools import wraps
 import pandas as pd
+from utils import *
 
 
 class RainBowSql(object):
@@ -194,7 +195,7 @@ class RainBowSql(object):
                 'master': [self.__current_user, 'admin'],
                 'tables': {},
                 'table_name': [],
-                }
+            }
             joblib.dump(database, dbname_path)
             print("[+] DataBase created!")
 
@@ -207,7 +208,7 @@ class RainBowSql(object):
         if dbname not in os.listdir(self.config['db_path']):
             print("[!] Can not find DataBase!")
         else:
-            db = joblib.load(self.config['db_path'] + '/' +dbname)
+            db = joblib.load(self.config['db_path'] + '/' + dbname)
             if self.__current_user not in db['master']:
                 print('[!] You have no access to this database!')
                 return
@@ -236,11 +237,7 @@ class RainBowSql(object):
             print("\t[-] {}".format(db))
 
     def create_table(self, table_name, cols):
-        # if len(table_name) != len():
-        #     print("[!] Names should be equal!")
-        #     return
-        if self.__current_db_name == '':
-            print("[!] You need to use database!")
+        if not self.is_use_database():
             return
         if table_name in self.__current_db.get('table_name'):
             print("[!] Table exist!")
@@ -252,15 +249,14 @@ class RainBowSql(object):
         self.save_db()
 
     def show_tables(self):
-        if self.__current_db_name == '':
-            print("[!] You need to use database!")
+        if not self.is_use_database():
+            return
             return
         for i in self.__current_db['table_name']:
             print("\t[-] {}".format(i))
 
     def drop_table(self, table_name):
-        if self.__current_db_name == '':
-            print("[!] You need to use database!")
+        if not self.is_use_database():
             return
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
@@ -271,8 +267,7 @@ class RainBowSql(object):
         self.save_db()
 
     def insert(self, table_name, data):
-        if self.__current_db_name == '':
-            print("[!] You need to use database!")
+        if not self.is_use_database():
             return
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
@@ -302,8 +297,25 @@ class RainBowSql(object):
         print(table[cols])
         print("#" * 20)
 
+    def update(self, table_name, cols, condition=False):
+        if not self.is_use_database():
+            return
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+
+
+
     def save_db(self):
         joblib.dump(self.__current_db, self.config['db_path'] + self.__current_db_name)
+
+
+    def is_use_database(self):
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return False
+        else:
+            return True
 
     def get_command(self):
         """
@@ -321,7 +333,8 @@ class RainBowSql(object):
         :param sql:sql语句
         :return: None
         """
-        sql_words = sql.lower().split(" ")
+        sql = sql.lower()
+        sql_words = sql.split(" ")
         if len(sql_words) < 2:
             print("[!] Wrong query!")
             return
@@ -340,8 +353,10 @@ class RainBowSql(object):
                 except:
                     print("[!] Wrong query!")
             if sql_words[1] == 'table':
-                self.create_table(sql_words[2], sql_words[3:])
-
+                try:
+                    self.create_table(sql_words[2], sql_words[3:])
+                except:
+                    print("[!] Error!")
         if operate == 'insert':
             try:
                 self.insert(sql_words[1], sql_words[2:])
@@ -384,6 +399,20 @@ class RainBowSql(object):
                 self.select(sql_words[1:-2], sql_words[-1])
             except:
                 print("[!] select error!")
+
+        if operate == 'update':
+            table_name = sql_words[1]
+            if 'where' in sql:
+                condition = where_cond(sql.split("where")[-1])
+                set_chr = r'set (.*?) where'
+            else:
+                condition = False
+                set_chr = r'set (.*?)$'
+            set_con = set_cond(sql, set_chr)
+            print(condition)
+            print(set_con)
+
+
 
     def run(self):
         """
