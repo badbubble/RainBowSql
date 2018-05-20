@@ -6,14 +6,18 @@ from Config import Config
 import joblib
 import hashlib
 from functools import wraps
+import pandas as pd
 
 
 class RainBowSql(object):
     def __init__(self):
-        self.__author = 'liuhanjun'
-        self.__current_user = ''
-        self.__user_right = ''
+        self.__info = 'MIT License'
+        self.__copyright = 'Copyright (c) 2018 Hanjun Liu'
+        self.__github = 'https://github.com/ETCartman/RainBowSql'
+        self.__current_user = 'admin'
+        self.__user_right = 0
         self.__current_db = ''
+        self.__current_db_name = ''
         self.__current_table = ''
         self.__version = 'v1.0'
         self._welcome()
@@ -26,6 +30,9 @@ class RainBowSql(object):
         :return: None
         """
         print("""
+###################################################################################################
+
+                Available In Github: https://github.com/ETCartman/RainBowSql
  _______  _______ _________ _        ______   _______           _______  _______  _       
 (  ____ )(  ___  )\__   __/( (    /|(  ___ \ (  ___  )|\     /|(  ____ \(  ___  )( \      
 | (    )|| (   ) |   ) (   |  \  ( || (   ) )| (   ) || )   ( || (    \/| (   ) || (      
@@ -35,9 +42,12 @@ class RainBowSql(object):
 | ) \ \__| )   ( |___) (___| )  \  || )___) )| (___) || () () |/\____) || (_\ \ || (____/\\
 |/   \__/|/     \|\_______/|/    )_)|/ \___/ (_______)(_______)\_______)(____\/_)(_______/
                                                             
-                           ---> type help to get help <---        {}        By:{}
+                           ---> type help to get help <---        {}        License:{}
+                                                                            {}
+                                                                            
+###################################################################################################
         
-        """.format(self.__version, self.__author))
+        """.format(self.__version, self.__info, self.__copyright))
 
     @staticmethod
     def help():
@@ -175,10 +185,17 @@ class RainBowSql(object):
         :return: None
         """
         dbname_path = self.config['db_path'] + dbname
+        print(dbname_path)
         if dbname in os.listdir(self.config['db_path']):
             print("[!] DataBase exixts!")
         else:
-            joblib.dump(dict(), dbname_path)
+            database = {
+                'name': dbname,
+                'master': [self.__current_user, 'admin'],
+                'tables': {},
+                'table_name': [],
+                }
+            joblib.dump(database, dbname_path)
             print("[+] DataBase created!")
 
     def use_database(self, dbname):
@@ -190,8 +207,13 @@ class RainBowSql(object):
         if dbname not in os.listdir(self.config['db_path']):
             print("[!] Can not find DataBase!")
         else:
+            db = joblib.load(self.config['db_path'] + '/' +dbname)
+            if self.__current_user not in db['master']:
+                print('[!] You have no access to this database!')
+                return
             print("[+] Using database {}".format(dbname))
-            self.__current_db = dbname
+            self.__current_db = db
+            self.__current_db_name = dbname
 
     def drop_database(self, dbname):
         """
@@ -204,8 +226,8 @@ class RainBowSql(object):
             print("[!] Can not find DataBase!")
         else:
             os.remove(dbname_path)
-            if self.__current_db == dbname:
-                self.__current_db = ''
+            if self.__current_db_name == dbname:
+                self.__current_db_name = ''
             print("[+] Database {} is droped!".format(dbname))
 
     def show_database(self):
@@ -213,12 +235,82 @@ class RainBowSql(object):
         for db in os.listdir(self.config['db_path']):
             print("\t[-] {}".format(db))
 
+    def create_table(self, table_name, cols):
+        # if len(table_name) != len():
+        #     print("[!] Names should be equal!")
+        #     return
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return
+        if table_name in self.__current_db.get('table_name'):
+            print("[!] Table exist!")
+            return
+        table = pd.DataFrame(columns=cols)
+        self.__current_db['tables'][table_name] = table
+        self.__current_db['table_name'].append(table_name)
+        print("[+] Table {} created!".format(table_name))
+        self.save_db()
+
+    def show_tables(self):
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return
+        for i in self.__current_db['table_name']:
+            print("\t[-] {}".format(i))
+
+    def drop_table(self, table_name):
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        del self.__current_db['tables'][table_name]
+        self.__current_db['table_name'].remove(table_name)
+        print("[+] Table dropped!")
+        self.save_db()
+
+    def insert(self, table_name, data):
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        table = self.__current_db['tables'][table_name]
+        if len(table.columns) != len(data):
+            print("[!] Data error!")
+            return
+        index = len(table)
+        table.loc[index] = dict(zip(table.columns, data))
+        print("[+] Data Inserted!")
+        self.save_db()
+
+    def select(self, cols, table_name):
+        if self.__current_db_name == '':
+            print("[!] You need to use database!")
+            return
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        table = self.__current_db['tables'][table_name]
+        if cols[0] == '*':
+            print(table)
+            return
+
+        print("#" * 20)
+        print(table[cols])
+        print("#" * 20)
+
+    def save_db(self):
+        joblib.dump(self.__current_db, self.config['db_path'] + self.__current_db_name)
+
     def get_command(self):
         """
         从控制台获取命令
         :return: None
         """
-        command = input("[>]") if not self.__current_db else input("[{} > ]".format(self.__current_db))
+        command = input("[>]") if not self.__current_db_name else input("[{} > ]".format(self.__current_db_name))
         command = command.lower()
         return command
 
@@ -247,11 +339,24 @@ class RainBowSql(object):
                     self.create_database(sql_words[2])
                 except:
                     print("[!] Wrong query!")
+            if sql_words[1] == 'table':
+                self.create_table(sql_words[2], sql_words[3:])
+
+        if operate == 'insert':
+            try:
+                self.insert(sql_words[1], sql_words[2:])
+            except:
+                print("[!] Inser error")
 
         if operate == 'drop':
             if sql_words[1] == 'database':
                 try:
                     self.drop_database(sql_words[2])
+                except:
+                    print("[!] Wrong query!")
+            if sql_words[1] == 'table':
+                try:
+                    self.drop_table(sql_words[2])
                 except:
                     print("[!] Wrong query!")
 
@@ -262,11 +367,23 @@ class RainBowSql(object):
                 except:
                     print("[!] Wrong query!")
 
+            if sql_words[1] == 'tables':
+                try:
+                    self.show_tables()
+                except:
+                    print("[!] Wrong query!")
+
         if operate == 'change':
             try:
                 self.change_user_right(sql_words[1])
             except:
                 print("[!] Wrong query!")
+
+        if operate == 'select':
+            try:
+                self.select(sql_words[1:-2], sql_words[-1])
+            except:
+                print("[!] select error!")
 
     def run(self):
         """
