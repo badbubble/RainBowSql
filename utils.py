@@ -7,6 +7,7 @@ def where_cond(sql):
     sql = sql.replace('=', '==')
     return sql
 
+
 def set_cond(sql, chr):
     set_cond = re.compile(chr)
     set_cond = re.search(set_cond, sql).group().split(' ')[1:-1]
@@ -19,4 +20,5 @@ def set_cond(sql, chr):
 
 
 if __name__ == '__main__':
-    print(where("name=1 and age=1"))
+    print(where_cond("name=1 and age=1"))
+    print(set_cond("Set a=1 from"))

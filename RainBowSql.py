@@ -195,6 +195,7 @@ class RainBowSql(object):
                 'master': [self.__current_user, 'admin'],
                 'tables': {},
                 'table_name': [],
+                'table_cols': {},
             }
             joblib.dump(database, dbname_path)
             print("[+] DataBase created!")
@@ -242,18 +243,32 @@ class RainBowSql(object):
         if table_name in self.__current_db.get('table_name'):
             print("[!] Table exist!")
             return
-        table = pd.DataFrame(columns=cols)
+        cols_info = {}
+        col_names = []
+        for i in cols:
+            col_name, dtype, prime_key, for_key, not_none = i.split(':')
+            cols_info[col_name] = {
+                'type': dtype,
+                'prim_key': True if prime_key == '1' else False,
+                'for_key': True if for_key == '1' else False,
+                'not_none': True if not_none == '1' else False
+            }
+            col_names.append(col_name)
+        table = pd.DataFrame(columns=col_names)
         self.__current_db['tables'][table_name] = table
         self.__current_db['table_name'].append(table_name)
+        self.__current_db['table_cols'][table_name] = cols_info
         print("[+] Table {} created!".format(table_name))
         self.save_db()
 
     def show_tables(self):
         if not self.is_use_database():
             return
-            return
         for i in self.__current_db['table_name']:
             print("\t[-] {}".format(i))
+            print("#" * 20)
+            print("[-] {}".format(self.__current_db['tables'][i].info()))
+            print("#" * 20)
 
     def drop_table(self, table_name):
         if not self.is_use_database():
@@ -263,6 +278,7 @@ class RainBowSql(object):
             return
         del self.__current_db['tables'][table_name]
         self.__current_db['table_name'].remove(table_name)
+        del self.__current_db['table_cols'][table_name]
         print("[+] Table dropped!")
         self.save_db()
 
@@ -273,11 +289,26 @@ class RainBowSql(object):
             print("[!] Table is not exist!")
             return
         table = self.__current_db['tables'][table_name]
+        col_info = self.__current_db['table_cols'][table_name]
         if len(table.columns) != len(data):
             print("[!] Data error!")
             return
         index = len(table)
-        table.loc[index] = dict(zip(table.columns, data))
+        hat_data = dict(zip(table.columns, data))
+        for col, col_data in hat_data.items():
+            if col_info[col]['prim_key']:
+                if col_data in table[col]:
+                    print("[!] Primary Key is exist!")
+                    return
+            if col_info[col]['for_ket']:
+                if col_data in table[col]:
+                    print("[!] Foreign key is exist!")
+                    return
+            if col_info['col']['not_none']:
+                if col_data == 'none':
+                    print("[!] Data can not be None!")
+                    return
+        self.__current_db['tables'][table_name] = table
         print("[+] Data Inserted!")
         self.save_db()
 
@@ -303,6 +334,21 @@ class RainBowSql(object):
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
+
+    def delete(self, table_name, where_cond):
+        if not self.is_use_database():
+            return
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        table = self.__current_db['tables'][table_name]
+
+        where_cond = where_cond.split('=')
+        table = table[table[where_cond[0]] != where_cond[1]]
+        self.__current_db['tables'][table_name] = table
+        print("[+] Info Deleted!")
+        self.save_db()
+
 
 
 
@@ -383,10 +429,10 @@ class RainBowSql(object):
                     print("[!] Wrong query!")
 
             if sql_words[1] == 'tables':
-                try:
-                    self.show_tables()
-                except:
-                    print("[!] Wrong query!")
+                #try:
+                self.show_tables()
+                #except:
+                #    print("[!] Wrong query!")
 
         if operate == 'change':
             try:
@@ -411,6 +457,15 @@ class RainBowSql(object):
             set_con = set_cond(sql, set_chr)
             print(condition)
             print(set_con)
+
+        if operate == 'delete':
+            table_name = sql_words[1]
+            if 'where' not in sql_words:
+                print("[!] No where condition!")
+                return
+            where_ = sql.split('where')[-1].strip()
+            self.delete(table_name, where_)
+
 
 
 
@@ -439,4 +494,5 @@ class RainBowSql(object):
 
 if __name__ == '__main__':
     db = RainBowSql()
+    db.use_database('lhj')
     db.run()
