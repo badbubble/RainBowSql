@@ -94,7 +94,16 @@ class RainBowSql(object):
                 print("[!] Your account have no access to do anything!")
             else:
                 return func(*args, **kwargs)
+        return wrapper
 
+    @staticmethod
+    def db_require(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if args[0].__current_db == "":
+                print("[!] You need to use database!")
+            else:
+                return func(*args, **kwargs)
         return wrapper
 
     def signup(self):
@@ -196,9 +205,24 @@ class RainBowSql(object):
                 'tables': {},
                 'table_name': [],
                 'table_cols': {},
+                'index': {},
+                'views': {},
+                'right': {
+                    'select': [],
+                    'delete': [],
+                    'insert': [],
+                    'update': [],
+                }
             }
             joblib.dump(database, dbname_path)
             print("[+] DataBase created!")
+
+    def check_right(self, command):
+        if self.__current_user not in self.__current_db['right'][command] or \
+                self.__current_user not in self.__current_db['master']:
+            print("[!] You have no right to {}".format(command))
+            return False
+        return True
 
     def use_database(self, dbname):
         """
@@ -210,9 +234,9 @@ class RainBowSql(object):
             print("[!] Can not find DataBase!")
         else:
             db = joblib.load(self.config['db_path'] + '/' + dbname)
-            if self.__current_user not in db['master']:
-                print('[!] You have no access to this database!')
-                return
+            # if self.__current_user not in db['master']:
+            #     print('[!] You have no access to this database!')
+            #     return
             print("[+] Using database {}".format(dbname))
             self.__current_db = db
             self.__current_db_name = dbname
@@ -268,6 +292,7 @@ class RainBowSql(object):
             print("\t[-] {}".format(i))
             print("#" * 20)
             print("[-] {}".format(self.__current_db['tables'][i].info()))
+            print("[-] {}".format(self.__current_db['table_cols'][i]))
             print("#" * 20)
 
     def drop_table(self, table_name):
@@ -285,6 +310,9 @@ class RainBowSql(object):
     def insert(self, table_name, data):
         if not self.is_use_database():
             return
+        if self.check_right('insert'):
+            return
+
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
@@ -297,17 +325,18 @@ class RainBowSql(object):
         hat_data = dict(zip(table.columns, data))
         for col, col_data in hat_data.items():
             if col_info[col]['prim_key']:
-                if col_data in table[col]:
+                if col_data in list(table[col]):
                     print("[!] Primary Key is exist!")
                     return
-            if col_info[col]['for_ket']:
-                if col_data in table[col]:
+            if col_info[col]['for_key']:
+                if col_data in list(table[col]):
                     print("[!] Foreign key is exist!")
                     return
-            if col_info['col']['not_none']:
+            if col_info[col]['not_none']:
                 if col_data == 'none':
                     print("[!] Data can not be None!")
                     return
+        table.loc[index] = hat_data
         self.__current_db['tables'][table_name] = table
         print("[+] Data Inserted!")
         self.save_db()
@@ -316,6 +345,9 @@ class RainBowSql(object):
         if self.__current_db_name == '':
             print("[!] You need to use database!")
             return
+        if self.check_right('select'):
+            return
+
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
@@ -331,6 +363,9 @@ class RainBowSql(object):
     def update(self, table_name, cols, condition=False):
         if not self.is_use_database():
             return
+        if self.check_right('update'):
+            return
+
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
@@ -338,6 +373,9 @@ class RainBowSql(object):
     def delete(self, table_name, where_cond):
         if not self.is_use_database():
             return
+        if self.check_right('delete'):
+            return
+
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
@@ -349,12 +387,31 @@ class RainBowSql(object):
         print("[+] Info Deleted!")
         self.save_db()
 
+    def get_view_data(self, sql):
+        pass
 
+    def create_view(self, name, sql):
+        if not self.is_use_database():
+            return
+        if name in self.__current_db['views'].keys():
+            print("[!] View is exist!")
+            return
+        self.__current_db['views'][name] = " ".join(sql)
+        self.save_db()
+        print("[+] View is created!")
 
+    def show_views(self):
+        if not self.is_use_database():
+            return
+        for name, content in self.__current_db['views'].items():
+            print('\t[-] {0}-->{1}'.format(name, content))
+
+    def create_index(self):
+        if not self.is_use_database():
+            return
 
     def save_db(self):
         joblib.dump(self.__current_db, self.config['db_path'] + self.__current_db_name)
-
 
     def is_use_database(self):
         if self.__current_db_name == '':
@@ -362,6 +419,32 @@ class RainBowSql(object):
             return False
         else:
             return True
+
+    def add_right(self, command, user_name):
+        if not self.is_use_database():
+            return
+        if self.__current_user not in self.__current_db['master']:
+            print("[!] You have no right!")
+            return
+        for i in command:
+            self.__current_db['right'][i].append(user_name)
+            print("[+] {} have access to use {}".format(user_name, i))
+        self.save_db()
+
+    def remove_right(self, command, user_name):
+        if not self.is_use_database():
+            return
+        if self.__current_user not in self.__current_db['master']:
+            print("[!] You have no right!")
+            return
+        for i in command:
+            try:
+                self.__current_db['right'][i].remove(user_name)
+                print("[+] {} have no access to use {} now!".format(user_name, i))
+            except:
+                print("[!] No {}".format(user_name))
+                return
+        self.save_db()
 
     def get_command(self):
         """
@@ -403,6 +486,12 @@ class RainBowSql(object):
                     self.create_table(sql_words[2], sql_words[3:])
                 except:
                     print("[!] Error!")
+            if sql_words[1] == 'view':
+                try:
+                    self.create_view(sql_words[2], sql_words[3:])
+                except:
+                    print("[!] Error!")
+
         if operate == 'insert':
             try:
                 self.insert(sql_words[1], sql_words[2:])
@@ -429,10 +518,16 @@ class RainBowSql(object):
                     print("[!] Wrong query!")
 
             if sql_words[1] == 'tables':
-                #try:
-                self.show_tables()
-                #except:
-                #    print("[!] Wrong query!")
+                try:
+                    self.show_tables()
+                except:
+                    print("[!] Wrong query!")
+
+            if sql_words[1] == 'views':
+                try:
+                    self.show_views()
+                except:
+                    print("[!] Wrong query!")
 
         if operate == 'change':
             try:
@@ -466,8 +561,23 @@ class RainBowSql(object):
             where_ = sql.split('where')[-1].strip()
             self.delete(table_name, where_)
 
+        if operate == 'grant':
+            if 'to' not in sql_words:
+                print("[!] No to!")
+                return
+            try:
+                self.add_right(sql_words[1:-2], sql_words[-1])
+            except:
+                print("[!] grant error!")
 
-
+        if operate == 'revoke':
+            if 'to' not in sql_words:
+                print("[!] No to!")
+                return
+            try:
+                self.remove_right(sql_words[1:-2], sql_words[-1])
+            except:
+                print("[!] revoke error!")
 
     def run(self):
         """
