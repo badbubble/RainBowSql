@@ -31,29 +31,29 @@ class RainBowSql(object):
         :return: None
         """
         print("""
-###################################################################################################
-
-                Available In Github: https://github.com/ETCartman/RainBowSql
- _______  _______ _________ _        ______   _______           _______  _______  _       
-(  ____ )(  ___  )\__   __/( (    /|(  ___ \ (  ___  )|\     /|(  ____ \(  ___  )( \      
-| (    )|| (   ) |   ) (   |  \  ( || (   ) )| (   ) || )   ( || (    \/| (   ) || (      
-| (____)|| (___) |   | |   |   \ | || (__/ / | |   | || | _ | || (_____ | |   | || |      
-|     __)|  ___  |   | |   | (\ \) ||  __ (  | |   | || |( )| |(_____  )| |   | || |      
-| (\ (   | (   ) |   | |   | | \   || (  \ \ | |   | || || || |      ) || | /\| || |      
-| ) \ \__| )   ( |___) (___| )  \  || )___) )| (___) || () () |/\____) || (_\ \ || (____/\\
-|/   \__/|/     \|\_______/|/    )_)|/ \___/ (_______)(_______)\_______)(____\/_)(_______/
-                                                            
-                           ---> type help to get help <---        {}        License:{}
-                                                                            {}
-                                                                            
-###################################################################################################
+        ###################################################################################################
+        
+                        Available In Github: https://github.com/ETCartman/RainBowSql
+         _______  _______ _________ _        ______   _______           _______  _______  _       
+        (  ____ )(  ___  )\__   __/( (    /|(  ___ \ (  ___  )|\     /|(  ____ \(  ___  )( \      
+        | (    )|| (   ) |   ) (   |  \  ( || (   ) )| (   ) || )   ( || (    \/| (   ) || (      
+        | (____)|| (___) |   | |   |   \ | || (__/ / | |   | || | _ | || (_____ | |   | || |      
+        |     __)|  ___  |   | |   | (\ \) ||  __ (  | |   | || |( )| |(_____  )| |   | || |      
+        | (\ (   | (   ) |   | |   | | \   || (  \ \ | |   | || || || |      ) || | /\| || |      
+        | ) \ \__| )   ( |___) (___| )  \  || )___) )| (___) || () () |/\____) || (_\ \ || (____/\\
+        |/   \__/|/     \|\_______/|/    )_)|/ \___/ (_______)(_______)\_______)(____\/_)(_______/
+                                                                    
+                                   ---> type help to get help <---        {}        License:{}
+                                                                                    {}
+                                                                                    
+        ###################################################################################################
         
         """.format(self.__version, self.__info, self.__copyright))
 
     @staticmethod
     def help():
         print("""
-        command:
+          command:
                 login: To login RainBowSql.
                 signup: To Create an account.
                 logout: To logout.
@@ -64,6 +64,14 @@ class RainBowSql(object):
                     create database <...>: create a database named <...>
                     use database <...>: use a database named <...>
                     drop database <...>: drop a database name <...>
+            table:
+                    show tables: show all tables.
+                    create tables <name> <col_name>:<data_type>:<primary_key>:<foreign_key>:<None>
+                    select <col name> form table name
+                    drop table <table name>
+                    delete <table name> where <col_name> = <value>
+            view:
+                    show views: show all views.
                 
         """)
 
@@ -312,7 +320,7 @@ class RainBowSql(object):
     def insert(self, table_name, data):
         if not self.is_use_database():
             return
-        if self.check_right('insert'):
+        if not self.check_right('insert'):
             return
 
         if table_name not in self.__current_db['table_name']:
