@@ -94,6 +94,7 @@ class RainBowSql(object):
                 print("[!] Your account have no access to do anything!")
             else:
                 return func(*args, **kwargs)
+
         return wrapper
 
     @staticmethod
@@ -104,6 +105,7 @@ class RainBowSql(object):
                 print("[!] You need to use database!")
             else:
                 return func(*args, **kwargs)
+
         return wrapper
 
     def signup(self):
@@ -218,7 +220,7 @@ class RainBowSql(object):
             print("[+] DataBase created!")
 
     def check_right(self, command):
-        if self.__current_user not in self.__current_db['right'][command] or \
+        if self.__current_user not in self.__current_db['right'][command] and \
                 self.__current_user not in self.__current_db['master']:
             print("[!] You have no right to {}".format(command))
             return False
@@ -345,7 +347,7 @@ class RainBowSql(object):
         if self.__current_db_name == '':
             print("[!] You need to use database!")
             return
-        if self.check_right('select'):
+        if not self.check_right('select'):
             return
 
         if table_name not in self.__current_db['table_name']:
@@ -363,7 +365,7 @@ class RainBowSql(object):
     def update(self, table_name, cols, condition=False):
         if not self.is_use_database():
             return
-        if self.check_right('update'):
+        if not self.check_right('update'):
             return
 
         if table_name not in self.__current_db['table_name']:
@@ -373,7 +375,7 @@ class RainBowSql(object):
     def delete(self, table_name, where_cond):
         if not self.is_use_database():
             return
-        if self.check_right('delete'):
+        if not self.check_right('delete'):
             return
 
         if table_name not in self.__current_db['table_name']:
@@ -406,9 +408,20 @@ class RainBowSql(object):
         for name, content in self.__current_db['views'].items():
             print('\t[-] {0}-->{1}'.format(name, content))
 
-    def create_index(self):
+    def create_index(self, index_name, table_name):
         if not self.is_use_database():
             return
+        tablename = table_name.split('(')[0]
+        colname = table_name.split('(')[-1][:-1]
+        print(tablename)
+        print(colname)
+        if tablename not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        table = self.__current_db['tables'][tablename]
+        table = table.set_index(table[colname])
+        self.__current_db['tables'][table_name] = table
+        self.save_db()
 
     def save_db(self):
         joblib.dump(self.__current_db, self.config['db_path'] + self.__current_db_name)
@@ -492,6 +505,12 @@ class RainBowSql(object):
                 except:
                     print("[!] Error!")
 
+            if sql_words[1] == 'index':
+                try:
+                    self.create_index(sql_words[2], sql_words[-1])
+                except:
+                    print("[!] Error!")
+
         if operate == 'insert':
             try:
                 self.insert(sql_words[1], sql_words[2:])
@@ -537,6 +556,8 @@ class RainBowSql(object):
 
         if operate == 'select':
             try:
+                if 'where' in sql_words:
+                    sql_words
                 self.select(sql_words[1:-2], sql_words[-1])
             except:
                 print("[!] select error!")
