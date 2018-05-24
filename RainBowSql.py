@@ -421,15 +421,21 @@ class RainBowSql(object):
             return
         tablename = table_name.split('(')[0]
         colname = table_name.split('(')[-1][:-1]
-        print(tablename)
-        print(colname)
         if tablename not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
         table = self.__current_db['tables'][tablename]
+        self.__current_db['index'][table_name] = colname
         table = table.set_index(table[colname])
         self.__current_db['tables'][table_name] = table
         self.save_db()
+        print("[+] Index created!")
+
+    def show_index(self):
+        if not self.is_use_database():
+            return
+        for name, index in self.__current_db['index'].items():
+            print("[-] Tabel {} use index {}".format(name, index))
 
     def save_db(self):
         joblib.dump(self.__current_db, self.config['db_path'] + self.__current_db_name)
@@ -553,6 +559,11 @@ class RainBowSql(object):
             if sql_words[1] == 'views':
                 try:
                     self.show_views()
+                except:
+                    print("[!] Wrong query!")
+            if sql_words[1] == 'indexs':
+                try:
+                    self.show_index()
                 except:
                     print("[!] Wrong query!")
 
