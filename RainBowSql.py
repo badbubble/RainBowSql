@@ -1,7 +1,4 @@
-import re
-import json
 import os
-import time
 from Config import Config
 import joblib
 import hashlib
@@ -15,8 +12,8 @@ class RainBowSql(object):
         self.__info = 'MIT License'
         self.__copyright = 'Copyright (c) 2018 Hanjun Liu'
         self.__github = 'https://github.com/ETCartman/RainBowSql'
-        self.__current_user = 'admin'
-        self.__user_right = 0
+        self.__current_user = ''
+        self.__user_right = ''
         self.__current_db = ''
         self.__current_db_name = ''
         self.__current_table = ''
@@ -244,9 +241,6 @@ class RainBowSql(object):
             print("[!] Can not find DataBase!")
         else:
             db = joblib.load(self.config['db_path'] + '/' + dbname)
-            # if self.__current_user not in db['master']:
-            #     print('[!] You have no access to this database!')
-            #     return
             print("[+] Using database {}".format(dbname))
             self.__current_db = db
             self.__current_db_name = dbname
@@ -324,9 +318,6 @@ class RainBowSql(object):
             return
 
         if table_name not in self.__current_db['table_name']:
-                        # if self.__current_user not in db['master']:
-            #     print('[!] You have no access to this database!')
-            #     returnprint("[!] Table is not exist!")
             return
         table = self.__current_db['tables'][table_name]
         col_info = self.__current_db['table_cols'][table_name]
@@ -353,9 +344,8 @@ class RainBowSql(object):
         print("[+] Data Inserted!")
         self.save_db()
 
-    def select(self, cols, table_name):
-        if self.__current_db_name == '':
-            print("[!] You need to use database!")
+    def select(self, cols, table_name, view=False):
+        if not self.is_use_database():
             return
         if not self.check_right('select'):
             return
@@ -365,8 +355,13 @@ class RainBowSql(object):
             return
         table = self.__current_db['tables'][table_name]
         if cols[0] == '*':
+            if view:
+                return table
             print(table)
             return
+
+        if view:
+            return table[cols]
 
         print("#" * 20)
         print(table[cols])
@@ -424,8 +419,18 @@ class RainBowSql(object):
         print("[+] Info Deleted!")
         self.save_db()
 
-    def get_view_data(self, sql):
-        pass
+    def get_view_data(self, cols, view_name):
+        if not self.is_use_database():
+            return
+        if view_name not in self.__current_db['views'].keys():
+            print("[!] View is exist!")
+            return
+        sql = self.__current_db['views'][view_name].split(' ')
+        table = self.select(sql[1:-2], sql[-1], True)
+        if cols[0] == '*':
+            print(table)
+        else:
+            print(table[cols])
 
     def create_view(self, name, sql):
         if not self.is_use_database():
@@ -603,7 +608,7 @@ class RainBowSql(object):
         if operate == 'select':
             try:
                 if 'where' in sql_words:
-                    sql_words
+                    pass
                 self.select(sql_words[1:-2], sql_words[-1])
             except:
                 print("[!] select error!")
@@ -618,6 +623,14 @@ class RainBowSql(object):
                 set_chr = r'set (.*?)$'
             set_con = set_cond(sql, set_chr)
             self.update(table_name, set_con, condition)
+
+        if operate == 'select-view':
+            try:
+                if 'where' in sql_words:
+                    pass
+                self.get_view_data(sql_words[1:-2], sql_words[-1])
+            except:
+                print("[!] select-view error!")
 
         if operate == 'delete':
             table_name = sql_words[1]
@@ -670,5 +683,4 @@ class RainBowSql(object):
 
 if __name__ == '__main__':
     db = RainBowSql()
-    db.use_database('lhj')
     db.run()
