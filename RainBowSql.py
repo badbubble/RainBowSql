@@ -324,7 +324,9 @@ class RainBowSql(object):
             return
 
         if table_name not in self.__current_db['table_name']:
-            print("[!] Table is not exist!")
+                        # if self.__current_user not in db['master']:
+            #     print('[!] You have no access to this database!')
+            #     returnprint("[!] Table is not exist!")
             return
         table = self.__current_db['tables'][table_name]
         col_info = self.__current_db['table_cols'][table_name]
@@ -375,7 +377,32 @@ class RainBowSql(object):
             return
         if not self.check_right('update'):
             return
-
+        if table_name not in self.__current_db['table_name']:
+            print("[!] Table is not exist!")
+            return
+        table = self.__current_db['tables'][table_name]
+        col_info = self.__current_db['table_cols'][table_name]
+        col = cols[0]
+        col_data = cols[1]
+        if col_info[cols[0]]['prim_key']:
+            if col_data in list(table[col]):
+                print("[!] Primary Key is exist!")
+                return
+        if col_info[col]['for_key']:
+            if col_data in list(table[col]):
+                print("[!] Foreign key is exist!")
+                return
+        if col_info[col]['not_none']:
+            if col_data == 'none':
+                print("[!] Data can not be None!")
+                return
+        if condition:
+            table.loc[table[condition[0]] == condition[1], [cols[0]]] = cols[1]
+        else:
+            table[cols[0]] = cols[1]
+        self.__current_db['tables'][table_name] = table
+        self.save_db()
+        print("[+] Table updated!")
         if table_name not in self.__current_db['table_name']:
             print("[!] Table is not exist!")
             return
@@ -590,8 +617,7 @@ class RainBowSql(object):
                 condition = False
                 set_chr = r'set (.*?)$'
             set_con = set_cond(sql, set_chr)
-            print(condition)
-            print(set_con)
+            self.update(table_name, set_con, condition)
 
         if operate == 'delete':
             table_name = sql_words[1]
